@@ -1,66 +1,104 @@
-import pandas as pd
-
-from app.data_engine.profiler import load_dataset
+from app.data_engine.context import DatasetContext
 
 
 def generate_eda(
-    file_path: str,
-    file_type: str,
+    context: DatasetContext,
 ) -> dict:
     """
-    Generate safe, aggregated EDA metadata.
+    Generate semantic-type-aware EDA metadata.
+
+    The dataset is loaded once through DatasetContext.
 
     Raw dataset rows are NOT returned.
     """
 
-    df = load_dataset(
-        file_path=file_path,
-        file_type=file_type,
-    )
+    df = context.df
 
-    numeric_columns = df.select_dtypes(
-        include="number"
-    ).columns.tolist()
+    semantic_types = context.semantic_types()
 
-    categorical_columns = df.select_dtypes(
-        exclude="number"
-    ).columns.tolist()
+    numeric_columns = [
+        column
+        for column, semantic_type
+        in semantic_types.items()
+        if semantic_type == "numeric"
+    ]
+
+    categorical_columns = [
+        column
+        for column, semantic_type
+        in semantic_types.items()
+        if semantic_type == "categorical"
+    ]
+
+    datetime_columns = [
+        column
+        for column, semantic_type
+        in semantic_types.items()
+        if semantic_type == "datetime"
+    ]
 
     numeric_summary = {}
 
     for column in numeric_columns:
+
         series = df[column]
 
-        numeric_summary[str(column)] = {
-            "mean": float(series.mean())
-            if not series.dropna().empty
-            else None,
-
-            "median": float(series.median())
-            if not series.dropna().empty
-            else None,
-
-            "min": float(series.min())
-            if not series.dropna().empty
-            else None,
-
-            "max": float(series.max())
-            if not series.dropna().empty
-            else None,
-
-            "std": float(series.std())
-            if not series.dropna().empty
-            else None,
+        numeric_summary[column] = {
+            "mean": (
+                float(series.mean())
+                if not series.dropna().empty
+                else None
+            ),
+            "median": (
+                float(series.median())
+                if not series.dropna().empty
+                else None
+            ),
+            "min": (
+                float(series.min())
+                if not series.dropna().empty
+                else None
+            ),
+            "max": (
+                float(series.max())
+                if not series.dropna().empty
+                else None
+            ),
+            "std": (
+                float(series.std())
+                if not series.dropna().empty
+                else None
+            ),
         }
 
     categorical_summary = {}
 
     for column in categorical_columns:
+
         series = df[column]
 
-        categorical_summary[str(column)] = {
+        categorical_summary[column] = {
             "unique_count": int(
-                series.nunique(dropna=True)
+                series.nunique(
+                    dropna=True
+                )
+            ),
+            "missing_count": int(
+                series.isna().sum()
+            ),
+        }
+
+    datetime_summary = {}
+
+    for column in datetime_columns:
+
+        series = df[column]
+
+        datetime_summary[column] = {
+            "unique_count": int(
+                series.nunique(
+                    dropna=True
+                )
             ),
             "missing_count": int(
                 series.isna().sum()
@@ -70,6 +108,7 @@ def generate_eda(
     missing_summary = {}
 
     for column in df.columns:
+
         missing_count = int(
             df[column].isna().sum()
         )
@@ -87,33 +126,49 @@ def generate_eda(
     correlation = {}
 
     if len(numeric_columns) >= 2:
-        correlation_df = df[numeric_columns].corr()
+
+        correlation_df = df[
+            numeric_columns
+        ].corr()
 
         correlation = {
             str(column): {
                 str(other_column): (
                     None
-                    if pd.isna(value)
-                    else round(float(value), 4)
+                    if value != value
+                    else round(
+                        float(value),
+                        4,
+                    )
                 )
-                for other_column, value in row.items()
+                for other_column, value
+                in row.items()
             }
-            for column, row in correlation_df.to_dict().items()
+            for column, row
+            in correlation_df.to_dict().items()
         }
 
     return {
-        "row_count": int(len(df)),
-        "column_count": int(len(df.columns)),
-        "numeric_columns": [
-            str(column)
-            for column in numeric_columns
-        ],
-        "categorical_columns": [
-            str(column)
-            for column in categorical_columns
-        ],
+        "row_count": context.row_count,
+        "column_count": context.column_count,
+
+        "numeric_columns": numeric_columns,
+
+        "categorical_columns": (
+            categorical_columns
+        ),
+
+        "datetime_columns": datetime_columns,
+
         "numeric_summary": numeric_summary,
-        "categorical_summary": categorical_summary,
+
+        "categorical_summary": (
+            categorical_summary
+        ),
+
+        "datetime_summary": datetime_summary,
+
         "missing_summary": missing_summary,
+
         "correlation": correlation,
     }

@@ -38,6 +38,21 @@ class DatasetContext:
             file_type=self.file_type,
         )
 
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str,
+        file_type: str,
+    ) -> "DatasetContext":
+        """
+        Create a DatasetContext from a dataset file.
+        """
+
+        return cls(
+            file_path=file_path,
+            file_type=file_type,
+        )
+
     @property
     def row_count(self) -> int:
         return int(len(self.df))

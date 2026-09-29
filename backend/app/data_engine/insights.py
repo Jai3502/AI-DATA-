@@ -1,5 +1,5 @@
-
 from app.data_engine.context import DatasetContext
+
 from app.data_engine.eda import generate_eda
 from app.data_engine.outliers import analyze_outliers
 from app.data_engine.quality import analyze_data_quality
@@ -56,7 +56,6 @@ def generate_insights(
     ]["total_missing_values"]
 
     if total_missing == 0:
-
         insights.append(
             {
                 "type": "data_quality",
@@ -67,9 +66,7 @@ def generate_insights(
                 ),
             }
         )
-
     else:
-
         insights.append(
             {
                 "type": "data_quality",
@@ -90,7 +87,6 @@ def generate_insights(
     ]["duplicate_row_count"]
 
     if duplicate_count == 0:
-
         insights.append(
             {
                 "type": "data_quality",
@@ -101,9 +97,7 @@ def generate_insights(
                 ),
             }
         )
-
     else:
-
         insights.append(
             {
                 "type": "data_quality",

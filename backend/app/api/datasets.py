@@ -25,6 +25,8 @@ from app.schemas.dataset import DatasetResponse
 from app.schemas.dataset_profile import DatasetProfileResponse
 
 from app.services.dataset_service import profile_uploaded_dataset
+from app.data_engine.context import DatasetContext
+from app.data_engine.visualizations import generate_visualizations
 
 
 router = APIRouter(
@@ -478,3 +480,82 @@ def get_dataset_insights(
                 "Failed to generate dataset insights."
             ),
         )
+# =========================================================
+# Dataset Visualizations
+# =========================================================
+
+@router.get(
+    "/{dataset_id}/visualizations",
+    status_code=status.HTTP_200_OK,
+)
+def get_dataset_visualizations(
+    dataset_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate dashboard-ready visualization data
+    for a dataset.
+
+    Access is restricted to users belonging to
+    the dataset's organization.
+
+    Raw dataset rows are never returned.
+    """
+
+    dataset = (
+        db.query(Dataset)
+        .filter(
+            Dataset.id == dataset_id
+        )
+        .first()
+    )
+
+    if dataset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found.",
+        )
+
+    get_organization_membership(
+        db=db,
+        organization_id=dataset.organization_id,
+        user_id=current_user.id,
+    )
+
+    storage_path = (
+        Path("storage")
+        / "datasets"
+        / dataset.storage_key
+    )
+
+    if not storage_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset file not found.",
+        )
+
+    try:
+
+        context = DatasetContext.from_file(
+            file_path=str(storage_path),
+            file_type=dataset.file_type,
+        )
+
+        result = generate_visualizations(
+            context=context,
+        )
+
+        return result
+
+    except Exception as exc:
+
+        print(
+            "VISUALIZATIONS ERROR:",
+            repr(exc),
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate dataset visualizations.",
+        )    

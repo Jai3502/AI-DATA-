@@ -1,0 +1,100 @@
+"use client";
+
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+export type TimeSeriesPoint = {
+  date: string;
+  value: number;
+};
+
+type TimeSeriesChartProps = {
+  title: string;
+  xAxis: string;
+  yAxis: string;
+  data: TimeSeriesPoint[];
+};
+
+export default function TimeSeriesChart({
+  title,
+  xAxis,
+  yAxis,
+  data,
+}: TimeSeriesChartProps) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-white">
+          {title}
+        </h3>
+
+        <p className="mt-1 text-sm text-slate-500">
+          {xAxis} vs {yAxis}
+        </p>
+      </div>
+
+      <div className="h-[360px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={data}
+            margin={{
+              top: 10,
+              right: 20,
+              left: 10,
+              bottom: 10,
+            }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#1e293b"
+            />
+
+            <XAxis
+              dataKey="date"
+              stroke="#64748b"
+              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={30}
+            />
+
+            <YAxis
+              stroke="#64748b"
+              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+            />
+
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#0f172a",
+                border: "1px solid #334155",
+                borderRadius: "12px",
+                color: "#ffffff",
+              }}
+              labelStyle={{
+                color: "#cbd5e1",
+              }}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}

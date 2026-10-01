@@ -18,3 +18,13 @@ class DatasetResponse(BaseModel):
     row_count: int | None = None
     column_count: int | None = None
     description: str | None = None
+
+class AnalystRequest(BaseModel):
+    question: str
+
+
+class AnalystResponse(BaseModel):
+    question: str
+    tool: str
+    reason: str
+    result: dict

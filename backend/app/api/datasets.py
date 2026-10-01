@@ -21,12 +21,17 @@ from app.models.dataset_profile import DatasetProfile
 from app.models.organization_membership import OrganizationMembership
 from app.models.user import User
 
-from app.schemas.dataset import DatasetResponse
+from app.schemas.dataset import (
+    AnalystRequest,
+    AnalystResponse,
+    DatasetResponse,
+)
 from app.schemas.dataset_profile import DatasetProfileResponse
 
 from app.services.dataset_service import profile_uploaded_dataset
 from app.data_engine.context import DatasetContext
 from app.data_engine.visualizations import generate_visualizations
+from app.ai.orchestrator import AIAnalystOrchestrator
 
 
 router = APIRouter(
@@ -558,4 +563,131 @@ def get_dataset_visualizations(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate dataset visualizations.",
+        )    
+# =========================================================
+# AI Analyst
+# =========================================================
+
+@router.post(
+    "/{dataset_id}/analyst",
+    response_model=AnalystResponse,
+    status_code=status.HTTP_200_OK,
+)
+def analyze_dataset_question(
+    dataset_id: uuid.UUID,
+    payload: AnalystRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Analyze a user question against a dataset.
+
+    Security:
+    - Requires authentication.
+    - Verifies organization membership.
+    - Loads only the requested private dataset.
+    - Uses the controlled AI Analyst orchestrator.
+    - Does not expose raw dataset rows.
+    """
+
+    # -----------------------------------------------------
+    # 1. Validate question
+    # -----------------------------------------------------
+
+    question = payload.question.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question cannot be empty.",
+        )
+
+    if len(question) > 2000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question cannot exceed 2000 characters.",
+        )
+
+    # -----------------------------------------------------
+    # 2. Get dataset
+    # -----------------------------------------------------
+
+    dataset = (
+        db.query(Dataset)
+        .filter(
+            Dataset.id == dataset_id
+        )
+        .first()
+    )
+
+    if dataset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found.",
+        )
+
+    # -----------------------------------------------------
+    # 3. Verify organization membership
+    # -----------------------------------------------------
+
+    get_organization_membership(
+        db=db,
+        organization_id=dataset.organization_id,
+        user_id=current_user.id,
+    )
+
+    # -----------------------------------------------------
+    # 4. Resolve private storage path
+    # -----------------------------------------------------
+
+    storage_path = (
+        Path("storage")
+        / "datasets"
+        / dataset.storage_key
+    )
+
+    if not storage_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset file not found.",
+        )
+
+    # -----------------------------------------------------
+    # 5. Create dataset context
+    # -----------------------------------------------------
+
+    try:
+        context = DatasetContext.from_file(
+            file_path=str(storage_path),
+            file_type=dataset.file_type,
+        )
+
+        # -------------------------------------------------
+        # 6. Run controlled AI Analyst orchestrator
+        # -------------------------------------------------
+
+        orchestrator = AIAnalystOrchestrator()
+
+        result = orchestrator.analyze(
+            question=question,
+            context=context,
+        )
+
+        return result
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    except Exception as exc:
+        print(
+            "AI ANALYST ERROR:",
+            repr(exc),
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze dataset question.",
         )    

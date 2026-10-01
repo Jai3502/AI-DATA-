@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiRequest } from "@/lib/api";
+import TimeSeriesChart from "@/components/dashboard/charts/TimeSeriesChart";
+import CategoryBarChart from "@/components/dashboard/charts/CategoryBarChart";
+import HistogramChart from "@/components/dashboard/charts/HistogramChart";
+import CorrelationHeatmap from "@/components/dashboard/charts/CorrelationHeatmap";
 
 type DatasetProfile = {
   id: string;
@@ -23,12 +27,51 @@ type DatasetProfile = {
   created_at: string;
   updated_at: string;
 };
+type VisualizationKPI = {
+  column: string;
+  count: number;
+  mean: number;
+  median: number;
+  min: number;
+  max: number;
+  std: number;
+};
+
+type VisualizationChart = {
+  type: "bar" | "histogram" | "line" | "heatmap";
+  chart_id: string;
+  title: string;
+  x_axis: string;
+  y_axis: string;
+  aggregation?: string;
+  source_date_count?: number;
+  data: Record<string, string | number | null>[];
+};
+
+type VisualizationResponse = {
+  row_count: number;
+  column_count: number;
+  numeric_columns: string[];
+  categorical_columns: string[];
+  datetime_columns: string[];
+  kpis: VisualizationKPI[];
+  chart_count: number;
+  charts: VisualizationChart[];
+};
 
 export default function DatasetDetailPage() {
   const params = useParams();
   const datasetId = params.datasetId as string;
 
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
+  const [visualizations, setVisualizations] =
+  useState<VisualizationResponse | null>(null);
+
+const [visualizationsLoading, setVisualizationsLoading] =
+  useState(true);
+
+const [visualizationsError, setVisualizationsError] =
+  useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -41,6 +84,25 @@ export default function DatasetDetailPage() {
         const data = await apiRequest<DatasetProfile>(
           `/datasets/${datasetId}/profile`,
         );
+        try {
+  setVisualizationsLoading(true);
+  setVisualizationsError("");
+
+  const visualizationData =
+    await apiRequest<VisualizationResponse>(
+      `/datasets/${datasetId}/visualizations`,
+    );
+
+  setVisualizations(visualizationData);
+} catch (err) {
+  setVisualizationsError(
+    err instanceof Error
+      ? err.message
+      : "Failed to load dataset visualizations.",
+  );
+} finally {
+  setVisualizationsLoading(false);
+}
 
         setProfile(data);
       } catch (err) {
@@ -159,6 +221,216 @@ export default function DatasetDetailPage() {
           </div>
 
         </div>
+        {/* Visualizations */}
+<section className="mb-8">
+  <div className="mb-6">
+    <p className="text-sm font-medium text-blue-400">
+      Analytics
+    </p>
+
+    <h2 className="mt-2 text-2xl font-bold text-white">
+      Data Visualizations
+    </h2>
+
+    <p className="mt-2 text-sm text-slate-400">
+      Automatically generated charts and statistical summaries
+      from your dataset.
+    </p>
+  </div>
+
+  {/* Visualization Loading */}
+  {visualizationsLoading && (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-8">
+      <p className="text-sm text-slate-400">
+        Generating visualizations...
+      </p>
+    </div>
+  )}
+
+  {/* Visualization Error */}
+  {!visualizationsLoading && visualizationsError && (
+    <div className="rounded-2xl border border-red-800 bg-red-950/40 p-6">
+      <p className="text-sm text-red-400">
+        {visualizationsError}
+      </p>
+    </div>
+  )}
+
+  {/* Visualization Content */}
+  {!visualizationsLoading &&
+    !visualizationsError &&
+    visualizations && (
+      <div className="space-y-8">
+
+        {/* KPI Cards */}
+        {visualizations.kpis.length > 0 && (
+          <div>
+            <h3 className="mb-4 text-lg font-semibold text-white">
+              Numeric Summary
+            </h3>
+
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {visualizations.kpis.map((kpi) => (
+                <div
+                  key={kpi.column}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5"
+                >
+                  <p className="text-sm font-medium text-slate-400">
+                    {kpi.column}
+                  </p>
+
+                  <p className="mt-3 text-2xl font-bold text-white">
+                    {kpi.mean.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Mean
+                  </p>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Median
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-slate-300">
+                        {kpi.median.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Count
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-slate-300">
+                        {kpi.count.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Minimum
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-slate-300">
+                        {kpi.min.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Maximum
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-slate-300">
+                        {kpi.max.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Charts */}
+        <div>
+          <h3 className="mb-4 text-lg font-semibold text-white">
+            Charts
+          </h3>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            {visualizations.charts.map((chart) => {
+              if (chart.type === "line") {
+                const data = chart.data.map((point) => ({
+                  date: String(point.date ?? ""),
+                  value: Number(point.value ?? 0),
+                }));
+
+                return (
+                  <TimeSeriesChart
+                    key={chart.chart_id}
+                    title={chart.title}
+                    xAxis={chart.x_axis}
+                    yAxis={chart.y_axis}
+                    data={data}
+                  />
+                );
+              }
+
+              if (chart.type === "bar") {
+                const data = chart.data.map((point) => ({
+                  category: String(point.category ?? ""),
+                  count: Number(point.count ?? 0),
+                }));
+
+                return (
+                  <CategoryBarChart
+                    key={chart.chart_id}
+                    title={chart.title}
+                    xAxis={chart.x_axis}
+                    yAxis={chart.y_axis}
+                    data={data}
+                  />
+                );
+              }
+
+              if (chart.type === "histogram") {
+                const data = chart.data.map((point) => ({
+                  range_start: Number(point.range_start ?? 0),
+                  range_end: Number(point.range_end ?? 0),
+                  count: Number(point.count ?? 0),
+                }));
+
+                return (
+                  <HistogramChart
+                    key={chart.chart_id}
+                    title={chart.title}
+                    xAxis={chart.x_axis}
+                    yAxis={chart.y_axis}
+                    data={data}
+                  />
+                );
+              }
+
+              if (chart.type === "heatmap") {
+                const data = chart.data.map((point) => ({
+                  x: String(point.x ?? ""),
+                  y: String(point.y ?? ""),
+                  correlation: Number(
+                    point.correlation ?? 0,
+                  ),
+                }));
+
+                return (
+                  <div
+                    key={chart.chart_id}
+                    className="xl:col-span-2"
+                  >
+                    <CorrelationHeatmap
+                      title={chart.title}
+                      data={data}
+                    />
+                  </div>
+                );
+              }
+
+              return null;
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+</section>
 
         {/* Column Profile */}
         <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">

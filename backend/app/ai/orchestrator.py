@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.ai.executor import execute_analysis_tool
+from app.ai.response_generator import generate_analysis_response
 from app.data_engine.context import DatasetContext
 
 
@@ -25,6 +26,7 @@ class AIAnalystOrchestrator:
     - Understand the basic intent of a user question.
     - Select only an allowlisted analysis tool.
     - Execute the selected tool through the safe executor.
+    - Convert the controlled result into a readable response.
     - Never execute arbitrary Python, SQL, shell commands,
       or filesystem operations.
     """
@@ -107,10 +109,6 @@ class AIAnalystOrchestrator:
         """
         Select an allowlisted analysis tool based on
         the user's question.
-
-        This is intentionally deterministic for the
-        first version. LLM-based tool selection can be
-        added later behind the same allowlist.
         """
 
         if not isinstance(question, str):
@@ -127,7 +125,6 @@ class AIAnalystOrchestrator:
                 "Question cannot be empty."
             )
 
-        # More specific analysis types are checked first.
         priority_order = (
             "outlier_analysis",
             "data_quality",
@@ -165,8 +162,8 @@ class AIAnalystOrchestrator:
         context: DatasetContext,
     ) -> dict[str, Any]:
         """
-        Route the user question to a safe analysis tool
-        and execute it through the central executor.
+        Route the user question to a safe analysis tool,
+        execute it, and generate a readable response.
         """
 
         decision = self.decide_tool(
@@ -178,10 +175,16 @@ class AIAnalystOrchestrator:
             context=context,
         )
 
+        answer = generate_analysis_response(
+            tool_name=decision.tool_name,
+            result=result,
+        )
+
         return {
             "question": question,
             "tool": decision.tool_name,
             "reason": decision.reason,
+            "answer": answer,
             "result": result,
         }
 

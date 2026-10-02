@@ -27,4 +27,5 @@ class AnalystResponse(BaseModel):
     question: str
     tool: str
     reason: str
+    answer: str
     result: dict

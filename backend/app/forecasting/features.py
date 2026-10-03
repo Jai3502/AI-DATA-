@@ -58,7 +58,10 @@ def create_forecasting_features(
         "Date"
     ).reset_index(drop=True)
 
-    df["month"] = df["Date"].dt.month
+    df["month"] = (
+        df["Date"]
+        .dt.month
+    )
 
     df["week_of_year"] = (
         df["Date"]
@@ -66,6 +69,10 @@ def create_forecasting_features(
         .week
         .astype(int)
     )
+
+    df["is_christmas_period"] = (
+        df["week_of_year"] == 51
+    ).astype(int)
 
     df["holiday_flag"] = (
         df["Holiday_Flag"]
@@ -91,15 +98,21 @@ def create_forecasting_features(
         df["Weekly_Sales"]
         .shift(8)
     )
+
     df["lag_12"] = (
-    df["Weekly_Sales"]
-    .shift(12)
-)
+        df["Weekly_Sales"]
+        .shift(12)
+    )
+
+    df["lag_51"] = (
+        df["Weekly_Sales"]
+        .shift(51)
+    )
 
     df["lag_52"] = (
-    df["Weekly_Sales"]
-    .shift(52)
-)
+        df["Weekly_Sales"]
+        .shift(52)
+    )
 
     df["rolling_mean_4"] = (
         df["Weekly_Sales"]

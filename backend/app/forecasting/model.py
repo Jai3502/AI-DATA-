@@ -7,19 +7,23 @@ from sklearn.ensemble import RandomForestRegressor
 from app.forecasting.features import create_forecasting_features
 
 
+
 FEATURE_COLUMNS = [
     "month",
     "week_of_year",
+    "is_christmas_period",
     "holiday_flag",
     "lag_1",
     "lag_2",
     "lag_4",
     "lag_8",
     "lag_12",
+    "lag_51",
     "lag_52",
     "rolling_mean_4",
     "rolling_mean_8",
     "rolling_mean_12",
+
 ]
 
 

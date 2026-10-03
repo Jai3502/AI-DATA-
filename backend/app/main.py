@@ -6,6 +6,7 @@ from app.api.auth import router as auth_router
 from app.api.organizations import router as organization_router
 from app.api.datasets import router as dataset_router
 from app.api.analysis import router as analysis_router
+from app.api.routes.forecast import router as forecast_router
 from app.core.database import engine
 
 
@@ -39,6 +40,7 @@ app.include_router(auth_router)
 app.include_router(organization_router)
 app.include_router(dataset_router)
 app.include_router(analysis_router)
+app.include_router(forecast_router)
 
 
 # ---------------------------------------------------------

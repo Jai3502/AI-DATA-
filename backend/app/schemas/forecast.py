@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -18,13 +19,22 @@ class ForecastPoint(BaseModel):
     forecast: float
 
 
+class HistoricalPoint(BaseModel):
+    date: date
+    actual: float
+
+
 class ForecastResponse(BaseModel):
     dataset_id: str
     horizon: int
     model: str
     frequency: str
+
     historical_start: date
     historical_end: date
+
+    historical: list[HistoricalPoint]
     forecast: list[ForecastPoint]
+
     metrics: dict[str, float]
     warnings: list[str]

@@ -48,3 +48,56 @@ export async function apiRequest<T>(
 
   return response.json();
 }
+
+
+/* =========================
+   Forecasting
+========================= */
+
+export interface HistoricalPoint {
+  date: string;
+  actual: number;
+}
+
+export interface ForecastPoint {
+  date: string;
+  forecast: number;
+}
+
+export interface ForecastMetrics {
+  mae: number;
+  rmse: number;
+  mape: number;
+}
+
+export interface ForecastResponse {
+  dataset_id: string;
+  horizon: number;
+  model: string;
+  frequency: string;
+  historical_start: string;
+  historical_end: string;
+  historical: HistoricalPoint[];
+  forecast: ForecastPoint[];
+  metrics: ForecastMetrics;
+  warnings: string[];
+}
+
+export interface ForecastRequest {
+  horizon: number;
+}
+
+export async function generateForecast(
+  datasetId: string,
+  horizon: number,
+): Promise<ForecastResponse> {
+  return apiRequest<ForecastResponse>(
+    `/datasets/${datasetId}/forecast`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        horizon,
+      }),
+    },
+  );
+}

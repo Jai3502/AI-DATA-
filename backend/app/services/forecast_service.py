@@ -6,8 +6,11 @@ from app.forecasting.features import create_forecasting_features
 from app.forecasting.backtesting import walk_forward_validation
 from app.forecasting.model import SalesForecastModel, recursive_forecast
 from app.forecasting.preprocessor import prepare_sales_timeseries
-from app.schemas.forecast import ForecastPoint, ForecastResponse
-
+from app.schemas.forecast import (
+    ForecastPoint,
+    ForecastResponse,
+    HistoricalPoint,
+)
 
 def generate_forecast(
     dataset_id: str,
@@ -48,6 +51,13 @@ def generate_forecast(
         "rmse": float(backtest_results["rmse"].mean()),
         "mape": float(backtest_results["mape"].mean()),
     }
+    historical_points = [
+        HistoricalPoint(
+            date=row.Date.date(),
+            actual=float(row.Weekly_Sales),
+        )
+        for row in data.itertuples(index=False)
+    ]
 
     forecast_points = [
         ForecastPoint(
@@ -70,6 +80,7 @@ def generate_forecast(
         historical_start=data["Date"].min().date(),
         historical_end=data["Date"].max().date(),
         forecast=forecast_points,
+        historical=historical_points,
         metrics=metrics,
         warnings=warnings,
     )

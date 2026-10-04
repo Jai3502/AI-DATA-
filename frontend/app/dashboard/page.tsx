@@ -8,6 +8,8 @@ import Sidebar from "@/components/dashboard/layout/Sidebar";
 
 import Topbar from "@/components/dashboard/layout/Topbar";
 
+import ForecastChart from "@/components/dashboard/forecast/ForecastChart";
+
 import StatCard from "@/components/dashboard/ui/StatCard";
 
 type User = {

@@ -8,7 +8,9 @@ def create_forecasting_features(
 ) -> pd.DataFrame:
 
     if data.empty:
-        raise ValueError("Time-series data cannot be empty.")
+        raise ValueError(
+            "Time-series data cannot be empty."
+        )
 
     required_columns = {
         "Date",
@@ -16,7 +18,9 @@ def create_forecasting_features(
         "Holiday_Flag",
     }
 
-    missing_columns = required_columns - set(data.columns)
+    missing_columns = (
+        required_columns - set(data.columns)
+    )
 
     if missing_columns:
         raise ValueError(
@@ -30,6 +34,10 @@ def create_forecasting_features(
             "Holiday_Flag",
         ]
     ].copy()
+
+    # -------------------------
+    # Data type conversion
+    # -------------------------
 
     df["Date"] = pd.to_datetime(
         df["Date"],
@@ -46,6 +54,10 @@ def create_forecasting_features(
         errors="coerce",
     )
 
+    # -------------------------
+    # Remove invalid rows
+    # -------------------------
+
     df = df.dropna(
         subset=[
             "Date",
@@ -54,9 +66,19 @@ def create_forecasting_features(
         ]
     )
 
-    df = df.sort_values(
-        "Date"
-    ).reset_index(drop=True)
+    # -------------------------
+    # Sort chronologically
+    # -------------------------
+
+    df = (
+        df
+        .sort_values("Date")
+        .reset_index(drop=True)
+    )
+
+    # -------------------------
+    # Calendar features
+    # -------------------------
 
     df["month"] = (
         df["Date"]
@@ -70,14 +92,26 @@ def create_forecasting_features(
         .astype(int)
     )
 
+    # -------------------------
+    # Christmas period feature
+    # -------------------------
+
     df["is_christmas_period"] = (
         df["week_of_year"] == 51
     ).astype(int)
+
+    # -------------------------
+    # Holiday feature
+    # -------------------------
 
     df["holiday_flag"] = (
         df["Holiday_Flag"]
         .astype(int)
     )
+
+    # -------------------------
+    # Lag features
+    # -------------------------
 
     df["lag_1"] = (
         df["Weekly_Sales"]
@@ -114,6 +148,10 @@ def create_forecasting_features(
         .shift(52)
     )
 
+    # -------------------------
+    # Rolling features
+    # -------------------------
+
     df["rolling_mean_4"] = (
         df["Weekly_Sales"]
         .shift(1)
@@ -135,4 +173,13 @@ def create_forecasting_features(
         .mean()
     )
 
-    return df.dropna().reset_index(drop=True)
+    # -------------------------
+    # Remove rows created by
+    # lag / rolling windows
+    # -------------------------
+
+    return (
+        df
+        .dropna()
+        .reset_index(drop=True)
+    )

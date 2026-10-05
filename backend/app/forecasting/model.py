@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
 from app.forecasting.features import create_forecasting_features
-
+from app.forecasting.holiday_calendar import get_holiday_flag
 
 
 FEATURE_COLUMNS = [
@@ -23,7 +23,6 @@ FEATURE_COLUMNS = [
     "rolling_mean_4",
     "rolling_mean_8",
     "rolling_mean_12",
-
 ]
 
 
@@ -102,7 +101,9 @@ def recursive_forecast(
 ) -> pd.DataFrame:
 
     if history.empty:
-        raise ValueError("History cannot be empty.")
+        raise ValueError(
+            "History cannot be empty."
+        )
 
     if horizon <= 0:
         raise ValueError(
@@ -176,10 +177,17 @@ def recursive_forecast(
             + pd.Timedelta(weeks=1)
         )
 
-        # Future holiday flag is initially 0.
-        # This will be improved with a proper
-        # holiday calendar in a later step.
-        future_holiday_flag = 0
+        # ---------------------------------
+        # Determine future holiday flag
+        # ---------------------------------
+
+        future_holiday_flag = get_holiday_flag(
+            next_date
+        )
+
+        # ---------------------------------
+        # Add future observation
+        # ---------------------------------
 
         temp = pd.concat(
             [
@@ -188,18 +196,28 @@ def recursive_forecast(
                     {
                         "Date": [next_date],
                         "Weekly_Sales": [float("nan")],
-                        "Holiday_Flag": [future_holiday_flag],
+                        "Holiday_Flag": [
+                            future_holiday_flag
+                        ],
                     }
                 ),
             ],
             ignore_index=True,
         )
 
+        # ---------------------------------
+        # Create forecasting features
+        # ---------------------------------
+
         features = create_forecasting_features(
             temp
         )
 
         latest_features = features.iloc[[-1]]
+
+        # ---------------------------------
+        # Generate prediction
+        # ---------------------------------
 
         prediction = float(
             model.predict(
@@ -211,8 +229,13 @@ def recursive_forecast(
             {
                 "Date": next_date,
                 "Forecast": prediction,
+                "Holiday_Flag": future_holiday_flag,
             }
         )
+
+        # ---------------------------------
+        # Add prediction to history
+        # ---------------------------------
 
         working_data = pd.concat(
             [
@@ -220,8 +243,12 @@ def recursive_forecast(
                 pd.DataFrame(
                     {
                         "Date": [next_date],
-                        "Weekly_Sales": [prediction],
-                        "Holiday_Flag": [future_holiday_flag],
+                        "Weekly_Sales": [
+                            prediction
+                        ],
+                        "Holiday_Flag": [
+                            future_holiday_flag
+                        ],
                     }
                 ),
             ],

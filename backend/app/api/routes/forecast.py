@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.api.datasets import get_organization_membership
 from app.models.dataset import Dataset
 from app.models.user import User
 from app.schemas.forecast import ForecastRequest, ForecastResponse
@@ -33,7 +34,6 @@ def create_forecast(
         db.query(Dataset)
         .filter(
             Dataset.id == dataset_id,
-            Dataset.created_by == current_user.id,
         )
         .first()
     )
@@ -43,6 +43,12 @@ def create_forecast(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dataset not found.",
         )
+
+    get_organization_membership(
+        db=db,
+        organization_id=dataset.organization_id,
+        user_id=current_user.id,
+    )
 
     if dataset.status != "profiled":
         raise HTTPException(

@@ -26,12 +26,14 @@ from app.schemas.dataset import (
     AnalystResponse,
     DatasetResponse,
 )
+
 from app.schemas.dataset_profile import DatasetProfileResponse
 
 from app.services.dataset_service import profile_uploaded_dataset
 from app.data_engine.context import DatasetContext
 from app.data_engine.visualizations import generate_visualizations
 from app.ai.orchestrator import AIAnalystOrchestrator
+from app.api.analysis import get_storage_path
 
 
 router = APIRouter(
@@ -429,11 +431,7 @@ def get_dataset_insights(
     # 3. Resolve private storage path
     # -----------------------------------------------------
 
-    storage_path = (
-        Path("storage")
-        / "datasets"
-        / dataset.storage_key
-    )
+    storage_path = get_storage_path(dataset)
 
     if not storage_path.exists():
         raise HTTPException(
@@ -485,6 +483,8 @@ def get_dataset_insights(
                 "Failed to generate dataset insights."
             ),
         )
+
+
 # =========================================================
 # Dataset Visualizations
 # =========================================================
@@ -528,11 +528,7 @@ def get_dataset_visualizations(
         user_id=current_user.id,
     )
 
-    storage_path = (
-        Path("storage")
-        / "datasets"
-        / dataset.storage_key
-    )
+    storage_path = get_storage_path(dataset)
 
     if not storage_path.exists():
         raise HTTPException(
@@ -563,7 +559,9 @@ def get_dataset_visualizations(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate dataset visualizations.",
-        )    
+        )
+
+
 # =========================================================
 # AI Analyst
 # =========================================================
@@ -640,11 +638,7 @@ def analyze_dataset_question(
     # 4. Resolve private storage path
     # -----------------------------------------------------
 
-    storage_path = (
-        Path("storage")
-        / "datasets"
-        / dataset.storage_key
-    )
+    storage_path = get_storage_path(dataset)
 
     if not storage_path.exists():
         raise HTTPException(
@@ -652,11 +646,13 @@ def analyze_dataset_question(
             detail="Dataset file not found.",
         )
 
+
     # -----------------------------------------------------
     # 5. Create dataset context
     # -----------------------------------------------------
 
     try:
+
         context = DatasetContext.from_file(
             file_path=str(storage_path),
             file_type=dataset.file_type,
@@ -676,12 +672,14 @@ def analyze_dataset_question(
         return result
 
     except ValueError as exc:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         )
 
     except Exception as exc:
+
         print(
             "AI ANALYST ERROR:",
             repr(exc),
@@ -690,4 +688,4 @@ def analyze_dataset_question(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to analyze dataset question.",
-        )    
+        )

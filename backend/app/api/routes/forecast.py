@@ -12,6 +12,7 @@ from app.models.dataset import Dataset
 from app.models.user import User
 from app.schemas.forecast import ForecastRequest, ForecastResponse
 from app.services.forecast_service import generate_forecast
+from app.api.analysis import get_storage_path
 
 
 router = APIRouter(
@@ -59,7 +60,7 @@ def create_forecast(
     try:
         return generate_forecast(
             dataset_id=str(dataset.id),
-            file_path=f"storage/datasets/{dataset.storage_key}",
+            file_path=str(get_storage_path(dataset)),
             horizon=request.horizon,
         )
     except ValueError as exc:

@@ -1,10 +1,9 @@
-from pathlib import Path
-
 from sqlalchemy.orm import Session
 
 from app.data_engine.profiler import profile_dataset
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
+from app.api.analysis import get_storage_path
 
 
 def profile_uploaded_dataset(
@@ -18,7 +17,7 @@ def profile_uploaded_dataset(
     Raw cell values are never stored in dataset_profiles.
     """
 
-    storage_path = Path("storage") / "datasets" / dataset.storage_key
+    storage_path = get_storage_path(dataset)
 
     if not storage_path.exists():
         raise FileNotFoundError(

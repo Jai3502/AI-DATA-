@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.permissions import require_permission
 
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
@@ -36,11 +37,19 @@ from app.ai.orchestrator import AIAnalystOrchestrator
 from app.api.analysis import get_storage_path
 
 
+# =========================================================
+# Router
+# =========================================================
+
 router = APIRouter(
     prefix="/datasets",
     tags=["Datasets"],
 )
 
+
+# =========================================================
+# File Configuration
+# =========================================================
 
 ALLOWED_EXTENSIONS = {
     ".csv",
@@ -52,6 +61,10 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 STORAGE_ROOT = Path("storage") / "datasets"
 
+
+# =========================================================
+# File Validation
+# =========================================================
 
 def validate_file_extension(
     filename: str,
@@ -70,6 +83,10 @@ def validate_file_extension(
 
     return extension
 
+
+# =========================================================
+# Organization Membership
+# =========================================================
 
 def get_organization_membership(
     db: Session,
@@ -118,13 +135,18 @@ async def upload_dataset(
 ):
 
     # -----------------------------------------------------
-    # 1. Verify organization membership
+    # 1. Verify organization membership + permission
     # -----------------------------------------------------
 
-    get_organization_membership(
+    membership = get_organization_membership(
         db=db,
         organization_id=organization_id,
         user_id=current_user.id,
+    )
+
+    require_permission(
+        role=membership.role,
+        permission="dataset_create",
     )
 
     # -----------------------------------------------------
@@ -317,10 +339,19 @@ def get_dataset_profile(
             detail="Dataset not found.",
         )
 
-    get_organization_membership(
+    # -----------------------------------------------------
+    # Verify organization membership + permission
+    # -----------------------------------------------------
+
+    membership = get_organization_membership(
         db=db,
         organization_id=dataset.organization_id,
         user_id=current_user.id,
+    )
+
+    require_permission(
+        role=membership.role,
+        permission="analysis_view",
     )
 
     profile = (
@@ -357,13 +388,18 @@ def get_datasets(
 ):
 
     # -----------------------------------------------------
-    # Verify organization membership
+    # Verify organization membership + permission
     # -----------------------------------------------------
 
-    get_organization_membership(
+    membership = get_organization_membership(
         db=db,
         organization_id=organization_id,
         user_id=current_user.id,
+    )
+
+    require_permission(
+        role=membership.role,
+        permission="analysis_view",
     )
 
     # -----------------------------------------------------
@@ -418,13 +454,18 @@ def get_dataset_insights(
         )
 
     # -----------------------------------------------------
-    # 2. Verify organization membership
+    # 2. Verify organization membership + permission
     # -----------------------------------------------------
 
-    get_organization_membership(
+    membership = get_organization_membership(
         db=db,
         organization_id=dataset.organization_id,
         user_id=current_user.id,
+    )
+
+    require_permission(
+        role=membership.role,
+        permission="analysis_view",
     )
 
     # -----------------------------------------------------
@@ -498,6 +539,7 @@ def get_dataset_visualizations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+
     """
     Generate dashboard-ready visualization data
     for a dataset.
@@ -522,10 +564,19 @@ def get_dataset_visualizations(
             detail="Dataset not found.",
         )
 
-    get_organization_membership(
+    # -----------------------------------------------------
+    # Verify organization membership + permission
+    # -----------------------------------------------------
+
+    membership = get_organization_membership(
         db=db,
         organization_id=dataset.organization_id,
         user_id=current_user.id,
+    )
+
+    require_permission(
+        role=membership.role,
+        permission="analysis_view",
     )
 
     storage_path = get_storage_path(dataset)
@@ -577,6 +628,7 @@ def analyze_dataset_question(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+
     """
     Analyze a user question against a dataset.
 
@@ -625,13 +677,18 @@ def analyze_dataset_question(
         )
 
     # -----------------------------------------------------
-    # 3. Verify organization membership
+    # 3. Verify organization membership + permission
     # -----------------------------------------------------
 
-    get_organization_membership(
+    membership = get_organization_membership(
         db=db,
         organization_id=dataset.organization_id,
         user_id=current_user.id,
+    )
+
+    require_permission(
+        role=membership.role,
+        permission="analysis_run",
     )
 
     # -----------------------------------------------------
@@ -645,7 +702,6 @@ def analyze_dataset_question(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dataset file not found.",
         )
-
 
     # -----------------------------------------------------
     # 5. Create dataset context

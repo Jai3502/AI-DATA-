@@ -1,7 +1,15 @@
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -15,6 +23,10 @@ class OrganizationMembership(Base):
             "organization_id",
             "user_id",
             name="uq_organization_membership",
+        ),
+        CheckConstraint(
+            "role IN ('owner', 'admin', 'analyst', 'viewer')",
+            name="ck_organization_memberships_valid_role",
         ),
     )
 
